@@ -82,7 +82,21 @@ Beanstalk := Object clone do(
 	# put Errors
 	ExpectedCRLFError   := Error clone with("EXPECTED_CRLF")
 	JobTooBigError      := Error clone with("JOB_TOO_BIG")
-	
+
+	# reserve and reserve-with-timeout Errors
+	DeadlineSoonError   := Error clone with("DEADLINE_SOON")
+	TimedOutError       := Error clone with("TIMED_OUT")
+
+	# delete, release, bury and touch Errors
+	NotFoundError       := Error clone with("NOT_FOUND")
+
+	# ignore Errors
+	NotIgnoredError     := Error clone with("NOT_IGNORED")
+
+	# peek, peek-ready, peek-delayed and peek-buried can respond
+	# with NOT_FOUND, which is defined already
+	# same with stats-job and stats-tube
+
 	allErrors := method(
 		self slotNames select(endsWithSeq("Error")) map(name, self getSlot(name))
 	)
