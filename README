@@ -1,2 +1,2 @@
 This is an Io client library for beanstalk.
-Copy 'Beanstalk' into your Io addons directory, then make Beanstalk, make install.
+Copy 'Beanstalk' into your Io addons directory, then reinstall Io.
