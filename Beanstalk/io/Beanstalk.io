@@ -26,7 +26,35 @@ Beanstalk := Object clone do(
 			command("use #{tube}\r\n" interpolate, list("USING")) split last
 		)
 
-		# Other non-api methods
+		# Worker Commands
+		reserve := method()
+		reserveWithTimeout := method()
+
+		delete := method()
+		release := method()
+		bury := method()
+		touch := method()
+
+		watch := method()
+		ignore := method()
+
+		# Other Commands
+		peek := method()
+		peekReady := method()
+		peekDelayed := method()
+		peekBuried := method()
+
+		kick := method()
+
+		statsJob := method()
+		statsTube := method()
+		stats := method()
+
+		listTubes := method()
+		listTubeUsed := method()
+		listTubesWatched := method()
+
+		# Non-API methods
 		close := method(
 			socket close,
 			self
