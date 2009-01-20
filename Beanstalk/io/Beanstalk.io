@@ -27,16 +27,54 @@ Beanstalk := Object clone do(
 		)
 
 		# Worker Commands
-		reserve := method()
-		reserveWithTimeout := method()
+		reserve := method(timeout,
+			cmd := if(timeout == nil,
+				"reserve\r\n",
+				"reserve-with-timeout #{timeout}\r\n" interpolate
+			)
+			response := command(cmd, list("RESERVED"))
+			id   := response split second asNumber
+			size := response split third  asNumber # excluding \r\n
 
-		delete := method()
-		release := method()
-		bury := method()
-		touch := method()
+			while(socket readBuffer size < size + 2, socket read)
+			body := socket readBuffer inclusiveSlice(0, size - 1)
+			socket readBuffer removeSlice(0, size + 1)
 
-		watch := method()
-		ignore := method()
+			Beanstalk Job with(id, body, self)
+		)
+
+		reserveWithTimeout := method(timeout, reserve(timeout))
+
+		delete := method(id,
+			command("delete #{id}\r\n" interpolate, list("DELETED"))
+			id
+		)
+
+		release := method(id, pri, delay,
+			if(pri == nil, pri = 65536)
+			if(delay == nil, delay = 0)
+			command("release #{id} #{pri} #{delay}\r\n" interpolate, list("RELEASED"))
+			id
+		)
+
+		bury := method(id, pri,
+			if(pri == nil, pri = 65536)
+			command("bury #{id} #{pri}\r\n" interpolate, list("BURIED"))
+			id
+		)
+
+		touch := method(id,
+			command("touch #{id}\r\n" interpolate, list("TOUCHED"))
+			id
+		)
+
+		watch := method(tube,
+			command("watch #{tube}\r\n" interpolate, list("WATCHING")) split last asNumber
+		)
+
+		ignore := method(tube,
+			command("ignore #{tube}\r\n" interpolate, list("WATCHING")) split last asNumber
+		)
 
 		# Other Commands
 		peek := method()
@@ -69,6 +107,23 @@ Beanstalk := Object clone do(
 				Exception raise(Beanstalk errorWithMessage(response))
 			)
 		)
+
+	)
+
+	Job := Object clone do(
+
+		with := method(id, body, connection,
+			job := self clone
+			job id := id
+			job body := body
+			job connection := connection
+			job
+		)
+
+		delete  := method(connection delete(id))
+		release := method(pri, delay, connection release(id, pri, delay))
+		bury    := method(pri, connection bury(id, pri))
+		touch   := method(connection touch(id))
 
 	)
 
