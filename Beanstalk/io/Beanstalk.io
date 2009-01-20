@@ -93,7 +93,11 @@ Beanstalk := Object clone do(
 		stats := method()
 
 		listTubes := method()
-		listTubeUsed := method()
+
+		listTubeUsed := method(
+			command("list-tube-used", list("USING")) split last
+		)
+
 		listTubesWatched := method()
 
 		# Non-API methods
