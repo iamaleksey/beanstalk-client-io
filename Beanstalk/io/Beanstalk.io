@@ -18,71 +18,75 @@ Beanstalk := Object clone do(
 			if(delay == nil, delay = 0)
 			if(ttr == nil, ttr = 120)
 
-			cmd := "put #{pri} #{delay} #{ttr} #{body size}\r\n#{body}\r\n" interpolate
+			cmd := "put #{pri} #{delay} #{ttr} #{body size}\r\n#{body}" interpolate
 			command(cmd, list("INSERTED", "BURIED")) split last asNumber
 		)
 
 		use := method(tube,
-			command("use #{tube}\r\n" interpolate, list("USING")) split last
+			command("use #{tube}" interpolate, list("USING")) split last
 		)
 
 		# Worker Commands
 		reserve := method(timeout,
-			cmd := if(timeout == nil,
-				"reserve\r\n",
-				"reserve-with-timeout #{timeout}\r\n" interpolate
-			)
-			response := command(cmd, list("RESERVED"))
-			id   := response split second asNumber
-			size := response split third  asNumber # excluding \r\n
-
-			while(socket readBuffer size < size + 2, socket read)
-			body := socket readBuffer inclusiveSlice(0, size - 1)
-			socket readBuffer removeSlice(0, size + 1)
-
-			Beanstalk Job with(id, body, self)
+			cmd := if(timeout == nil, "reserve", "reserve-with-timeout #{timeout}" interpolate)
+			readJob(command(cmd, list("RESERVED")))
 		)
 
-		reserveWithTimeout := method(timeout, reserve(timeout))
+		reserveWithTimeout := method(timeout,
+			reserve(timeout)
+		)
 
 		delete := method(id,
-			command("delete #{id}\r\n" interpolate, list("DELETED"))
-			id
+			command("delete #{id}" interpolate, list("DELETED"))
+			self
 		)
 
 		release := method(id, pri, delay,
 			if(pri == nil, pri = 65536)
 			if(delay == nil, delay = 0)
-			command("release #{id} #{pri} #{delay}\r\n" interpolate, list("RELEASED"))
-			id
+			command("release #{id} #{pri} #{delay}" interpolate, list("RELEASED"))
+			self
 		)
 
 		bury := method(id, pri,
 			if(pri == nil, pri = 65536)
-			command("bury #{id} #{pri}\r\n" interpolate, list("BURIED"))
-			id
+			command("bury #{id} #{pri}" interpolate, list("BURIED"))
+			self
 		)
 
 		touch := method(id,
-			command("touch #{id}\r\n" interpolate, list("TOUCHED"))
-			id
+			command("touch #{id}" interpolate, list("TOUCHED"))
+			self
 		)
 
 		watch := method(tube,
-			command("watch #{tube}\r\n" interpolate, list("WATCHING")) split last asNumber
+			command("watch #{tube}" interpolate, list("WATCHING")) split last asNumber
 		)
 
 		ignore := method(tube,
-			command("ignore #{tube}\r\n" interpolate, list("WATCHING")) split last asNumber
+			command("ignore #{tube}" interpolate, list("WATCHING")) split last asNumber
 		)
 
 		# Other Commands
-		peek := method()
-		peekReady := method()
-		peekDelayed := method()
-		peekBuried := method()
+		peek := method(id,
+			peekGeneric("peek #{id}" interpolate)
+		)
 
-		kick := method()
+		peekReady := method(
+			peekGeneric("peek-ready")
+		)
+
+		peekDelayed := method(
+			peekGeneric("peek-delayed")
+		)
+
+		peekBuried := method(
+			peekGeneric("peek-buried")
+		)
+
+		kick := method(bound,
+			command("kick #{bound}" interpolate, list("KICKED")) split last asNumber
+		)
 
 		statsJob := method()
 		statsTube := method()
@@ -100,12 +104,27 @@ Beanstalk := Object clone do(
 
 		# Internals
 		command := method(cmd, expected,
-			socket streamWrite(cmd)
+			socket streamWrite(cmd .. "\r\n")
 			response := socket readUntilSeq("\r\n")
 			if(response split containsAny(expected),
 				response,
 				Exception raise(Beanstalk errorWithMessage(response))
 			)
+		)
+
+		peekGeneric := method(cmd,
+			readJob(command(cmd, list("FOUND")))
+		)
+
+		readJob := method(response,
+			id   := response split second asNumber
+			size := response split third  asNumber # excluding \r\n
+
+			while(socket readBuffer size < size + 2, socket read)
+			body := socket readBuffer inclusiveSlice(0, size - 1)
+			socket readBuffer removeSlice(0, size + 1)
+
+			Beanstalk Job with(id, body, self)
 		)
 
 	)
@@ -120,10 +139,25 @@ Beanstalk := Object clone do(
 			job
 		)
 
-		delete  := method(connection delete(id))
-		release := method(pri, delay, connection release(id, pri, delay))
-		bury    := method(pri, connection bury(id, pri))
-		touch   := method(connection touch(id))
+		delete := method(
+			connection delete(id)
+			self
+		)
+
+		release := method(pri, delay,
+			connection release(id, pri, delay)
+			self
+		)
+
+		bury := method(pri,
+			connection bury(id, pri)
+			self
+		)
+
+		touch := method(
+			connection touch(id)
+			self
+		)
 
 	)
 
