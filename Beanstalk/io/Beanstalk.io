@@ -1,4 +1,7 @@
 Beanstalk := Object clone do(
+//metadoc Beanstalk Aleksey Yeschenko, 2009
+//metadoc Beanstalk license BSD revised
+//metadoc Beanstalk category Messaging
 
 	Connection := Object clone do(
 
