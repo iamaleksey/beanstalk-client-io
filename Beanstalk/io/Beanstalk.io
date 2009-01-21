@@ -3,13 +3,10 @@ Beanstalk := Object clone do(
 	Connection := Object clone do(
 
 		with := method(addr,
-			host := addr split(":") first
-			port := addr split(":") second asNumber
-
-			conn := self clone
-			conn socket := Socket clone setHost(host) setPort(port) connect
-			conn
+			self clone open(addr)
 		)
+
+		to := method(addr, with(addr))
 
 		# Producer Commands
 		put := method(body, pri, delay, ttr,
@@ -19,17 +16,17 @@ Beanstalk := Object clone do(
 			if(ttr == nil, ttr = 120)
 
 			cmd := "put #{pri} #{delay} #{ttr} #{body size}\r\n#{body}" interpolate
-			command(cmd, list("INSERTED", "BURIED")) split last asNumber
+			command(cmd, list("INSERTED", "BURIED")) at(1) asNumber
 		)
 
 		use := method(tube,
-			command("use #{tube}" interpolate, list("USING")) split last
+			command("use #{tube}" interpolate, "USING") at(1)
 		)
 
 		# Worker Commands
 		reserve := method(timeout,
 			cmd := if(timeout == nil, "reserve", "reserve-with-timeout #{timeout}" interpolate)
-			readJob(command(cmd, list("RESERVED")))
+			readJob(command(cmd, "RESERVED"))
 		)
 
 		reserveWithTimeout := method(timeout,
@@ -37,34 +34,34 @@ Beanstalk := Object clone do(
 		)
 
 		delete := method(id,
-			command("delete #{id}" interpolate, list("DELETED"))
+			command("delete #{id}" interpolate, "DELETED")
 			self
 		)
 
 		release := method(id, pri, delay,
 			if(pri == nil, pri = 65536)
 			if(delay == nil, delay = 0)
-			command("release #{id} #{pri} #{delay}" interpolate, list("RELEASED"))
+			command("release #{id} #{pri} #{delay}" interpolate, "RELEASED")
 			self
 		)
 
 		bury := method(id, pri,
 			if(pri == nil, pri = 65536)
-			command("bury #{id} #{pri}" interpolate, list("BURIED"))
+			command("bury #{id} #{pri}" interpolate, "BURIED")
 			self
 		)
 
 		touch := method(id,
-			command("touch #{id}" interpolate, list("TOUCHED"))
+			command("touch #{id}" interpolate, "TOUCHED")
 			self
 		)
 
 		watch := method(tube,
-			command("watch #{tube}" interpolate, list("WATCHING")) split last asNumber
+			command("watch #{tube}" interpolate, "WATCHING") at(1) asNumber
 		)
 
 		ignore := method(tube,
-			command("ignore #{tube}" interpolate, list("WATCHING")) split last asNumber
+			command("ignore #{tube}" interpolate, "WATCHING") at(1) asNumber
 		)
 
 		# Other Commands
@@ -85,22 +82,41 @@ Beanstalk := Object clone do(
 		)
 
 		kick := method(bound,
-			command("kick #{bound}" interpolate, list("KICKED")) split last asNumber
+			command("kick #{bound}" interpolate, "KICKED") at(1) asNumber
 		)
 
-		statsJob := method()
-		statsTube := method()
-		stats := method()
+		statsJob := method(id,
+			readYAML("stats-job #{id}" interpolate)
+		)
 
-		listTubes := method()
+		statsTube := method(tube,
+			readYAML("stats-tube #{tube}" interpolate)
+		)
+
+		stats := method(
+			readYAML("stats")
+		)
+
+		listTubes := method(
+			readYAML("list-tubes")
+		)
 
 		listTubeUsed := method(
-			command("list-tube-used", list("USING")) split last
+			command("list-tube-used", "USING") at(1)
 		)
 
-		listTubesWatched := method()
+		listTubesWatched := method(
+			readYAML("list-tubes-watched")
+		)
 
 		# Non-API methods
+		open := method(addr,
+			host := addr split(":") first
+			port := addr split(":") second asNumber
+			self socket := Socket clone setHost(host) setPort(port) connect
+			self
+		)
+
 		close := method(
 			socket close,
 			self
@@ -109,26 +125,29 @@ Beanstalk := Object clone do(
 		# Internals
 		command := method(cmd, expected,
 			socket streamWrite(cmd .. "\r\n")
-			response := socket readUntilSeq("\r\n")
-			if(response split containsAny(expected),
+			expected = list(expected) flatten
+			response := socket readUntilSeq("\r\n") split
+			if(response containsAny(expected),
 				response,
-				Exception raise(Beanstalk errorWithMessage(response))
+				Exception raise(Beanstalk errorWithMessage(response at(0)))
 			)
 		)
 
 		peekGeneric := method(cmd,
-			readJob(command(cmd, list("FOUND")))
+			readJob(command(cmd, "FOUND"))
 		)
 
 		readJob := method(response,
-			id   := response split second asNumber
-			size := response split third  asNumber # excluding \r\n
-
-			while(socket readBuffer size < size + 2, socket read)
-			body := socket readBuffer inclusiveSlice(0, size - 1)
-			socket readBuffer removeSlice(0, size + 1)
-
+			id   := response at(1) asNumber
+			size := response at(2) asNumber # excluding \r\n
+			body := socket readBytes(size + 2) inclusiveSlice(0, size - 1)
 			Beanstalk Job with(id, body, self)
+		)
+
+		readYAML := method(cmd,
+			size := command(cmd, "OK") at(1) asNumber
+			data := socket readBytes(size + 2) inclusiveSlice(0, size - 1)
+			YAML load(data)
 		)
 
 	)
@@ -140,27 +159,35 @@ Beanstalk := Object clone do(
 			job id := id
 			job body := body
 			job connection := connection
+			job reserved := true
 			job
 		)
 
 		delete := method(
-			connection delete(id)
+			if(reserved, connection delete(id))
+			reserved = false
 			self
 		)
 
 		release := method(pri, delay,
-			connection release(id, pri, delay)
+			if(reserved, connection release(id, pri, delay))
+			reserved = false
 			self
 		)
 
 		bury := method(pri,
-			connection bury(id, pri)
+			if(reserved, connection bury(id, pri))
+			reserved = false
 			self
 		)
 
 		touch := method(
-			connection touch(id)
+			if(reserved, connection touch(id))
 			self
+		)
+
+		stats := method(
+			connection statsJob(id)
 		)
 
 	)
@@ -196,4 +223,12 @@ Beanstalk := Object clone do(
 
 	errorWithMessage := method(msg, allErrors detect(message == msg))
 
+)
+
+# Am I missing an existing method for this?
+Socket readBytes := method(n,
+	while(readBuffer size < n, self read)
+	bytes := readBuffer inclusiveSlice(0, n - 1)
+	readBuffer removeSlice(0, n - 1)
+	bytes
 )
