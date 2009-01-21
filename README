@@ -1,3 +1,5 @@
 This is an Io client library for beanstalk, exact and complete implementation of http://github.com/kr/beanstalkd/blob/v1.1/doc/protocol.txt?raw=true.
 It requires syck and YAML addon: http://github.com/why/syck/tree/master/ext/io.
 Install YAML, copy 'Beanstalk' into your Io addons directory, then reinstall Io.
+
+Command default arguments and a few other things taken from Keith Rarick's ruby client: http://github.com/dustin/beanstalk-client-ruby
