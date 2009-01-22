@@ -34,7 +34,7 @@ Beanstalk := Object clone do(
 	)
 
 	disconnect := method(
-		socket close,
+		socket close
 		self
 	)
 
@@ -264,9 +264,9 @@ BeanstalkJob := Object clone do(
 )
 
 # Am I missing an existing method for this?
-Socket readBytes := method(n,
-	while(readBuffer size < n, self read)
-	bytes := readBuffer inclusiveSlice(0, n - 1)
-	readBuffer removeSlice(0, n - 1)
+Socket readBytes := method(numBytes,
+	while(readBuffer size < numBytes, self read)
+	bytes := readBuffer inclusiveSlice(0, numBytes - 1)
+	readBuffer removeSlice(0, numBytes - 1)
 	bytes
 )
