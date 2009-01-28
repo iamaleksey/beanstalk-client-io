@@ -184,25 +184,25 @@ Beanstalk := Object clone do(
 	)
 
 	# Common Errors
-	OutOfMemoryError    := Error clone with("OUT_OF_MEMORY")
-	InternalError       := Error clone with("INTERNAL_ERROR")
-	DrainingError       := Error clone with("DRAINING")
-	BadFormatError      := Error clone with("BAD_FORMAT")
-	UnknownCommandError := Error clone with("UNKNOWN_COMMAND")
+	OutOfMemoryError    := Error with("OUT_OF_MEMORY")
+	InternalError       := Error with("INTERNAL_ERROR")
+	DrainingError       := Error with("DRAINING")
+	BadFormatError      := Error with("BAD_FORMAT")
+	UnknownCommandError := Error with("UNKNOWN_COMMAND")
 
 	# put Errors
-	ExpectedCRLFError   := Error clone with("EXPECTED_CRLF")
-	JobTooBigError      := Error clone with("JOB_TOO_BIG")
+	ExpectedCRLFError   := Error with("EXPECTED_CRLF")
+	JobTooBigError      := Error with("JOB_TOO_BIG")
 
 	# reserve and reserve-with-timeout Errors
-	DeadlineSoonError   := Error clone with("DEADLINE_SOON")
-	TimedOutError       := Error clone with("TIMED_OUT")
+	DeadlineSoonError   := Error with("DEADLINE_SOON")
+	TimedOutError       := Error with("TIMED_OUT")
 
 	# delete, release, bury and touch Errors
-	NotFoundError       := Error clone with("NOT_FOUND")
+	NotFoundError       := Error with("NOT_FOUND")
 
 	# ignore Errors
-	NotIgnoredError     := Error clone with("NOT_IGNORED")
+	NotIgnoredError     := Error with("NOT_IGNORED")
 
 	# peek, peek-ready, peek-delayed and peek-buried can respond
 	# with NOT_FOUND, which is defined already
@@ -261,12 +261,4 @@ BeanstalkJob := Object clone do(
 		connection statsJob(id)
 	)
 
-)
-
-# Am I missing an existing method for this?
-Socket readBytes := method(numBytes,
-	while(readBuffer size < numBytes, self read)
-	bytes := readBuffer inclusiveSlice(0, numBytes - 1)
-	readBuffer removeSlice(0, numBytes - 1)
-	bytes
 )
