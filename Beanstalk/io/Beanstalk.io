@@ -167,14 +167,14 @@ Beanstalk := Object clone do(
 	)
 
 	peekGeneric := method(cmd,
-		readJob(command(cmd, "FOUND"))
+		readJob(command(cmd, "FOUND")) setReserved(false)
 	)
 
 	readJob := method(response,
 		id   := response at(1) asNumber
 		size := response at(2) asNumber # excluding \r\n
 		body := socket readBytes(size + 2) inclusiveSlice(0, size - 1)
-		BeanstalkJob clone with(id, body, self)
+		BeanstalkJob with(id, body, self)
 	)
 
 	readYAML := method(cmd,
@@ -222,12 +222,17 @@ Beanstalk := Object clone do(
 //metadoc BeanstalkJob description Represents a job from the queue
 BeanstalkJob := Object clone do(
 
-	with := method(id, body, connection,
-		self id := id
-		self body := body
-		self connection := connection
-		self reserved := true
-		self
+	id ::= nil
+	body ::= nil
+	connection ::= nil
+	reserved ::= nil
+
+	with := method(id, body, connection, reserved,
+		j := self clone
+		j setId(id) setBody(body) setConnection(connection)
+		if(reserved == nil, reserved = true)
+		j setReserved(reserved)
+		j
 	)
 
 	//doc BeanstalkJob delete See Beanstalk delete
