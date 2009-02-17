@@ -22,6 +22,8 @@ loop(
 </pre>
 See Beanstalk.io code and protocol description (http://github.com/kr/beanstalkd/tree/master/doc/protocol.txt) for details.
 Both are short and easy to read.
+
+<br />Stat commands depend on <a href="http://github.com/why/syck/tree/a4f241be5d247853aea6127d02dbdedd8a1dd477/ext/io">YAML</a>.
 */
 Beanstalk := Object clone do(
 
